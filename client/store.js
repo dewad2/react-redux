@@ -10,7 +10,8 @@ import socket from './socket';
 const initialState = {
   messages: [],
   name: 'Reggie',
-  newMessageEntry: ''
+  newMessageEntry: '',
+  channels: []
 };
 
 // ACTION TYPES
@@ -19,55 +20,68 @@ const UPDATE_NAME = 'UPDATE_NAME';
 const GET_MESSAGE = 'GET_MESSAGE';
 const GET_MESSAGES = 'GET_MESSAGES';
 const WRITE_MESSAGE = 'WRITE_MESSAGE';
+const GET_CHANNELS = 'GET_CHANNELS';
 
 // ACTION CREATORS
 
-export function updateName (name) {
+export function updateName(name) {
   const action = { type: UPDATE_NAME, name };
   return action;
 }
 
-export function getMessage (message) {
+export function getMessage(message) {
   const action = { type: GET_MESSAGE, message };
   return action;
 }
 
-export function getMessages (messages) {
+export function getMessages(messages) {
   const action = { type: GET_MESSAGES, messages };
   return action;
 }
 
-export function writeMessage (content) {
+export function writeMessage(content) {
   const action = { type: WRITE_MESSAGE, content };
+  return action;
+}
+
+export function getChannels(channels) {
+  const action = { type: GET_CHANNELS, channels };
   return action;
 }
 
 // THUNK CREATORS
 
-export function fetchMessages () {
-
-  return function thunk (dispatch) {
-    return axios.get('/api/messages')
+export function fetchMessages() {
+  return function thunk(dispatch) {
+    return axios
+      .get('/api/messages')
       .then(res => res.data)
       .then(messages => {
         const action = getMessages(messages);
         dispatch(action);
       });
-  }
+  };
 }
 
-export function postMessage (message) {
-
-  return function thunk (dispatch) {
-    return axios.post('/api/messages', message)
+export function postMessage(message) {
+  return function thunk(dispatch) {
+    return axios
+      .post('/api/messages', message)
       .then(res => res.data)
       .then(newMessage => {
         const action = getMessage(newMessage);
         dispatch(action);
         socket.emit('new-message', newMessage);
       });
-  }
+  };
+}
 
+export function fetchChannels() {
+  return async dispatch => {
+    const { data } = await axios.get('/api/channels');
+    const action = getChannels(data);
+    dispatch(action);
+  };
 }
 
 // REDUCER
@@ -94,10 +108,8 @@ export function postMessage (message) {
  * Note: this is still an experimental language feature (though it is on its way to becoming official).
  * We can use it now because we are using a special babel plugin with webpack (babel-preset-stage-2)!
  */
-function reducer (state = initialState, action) {
-
+function reducer(state = initialState, action) {
   switch (action.type) {
-
     case UPDATE_NAME:
       return {
         ...state,
@@ -122,18 +134,20 @@ function reducer (state = initialState, action) {
         newMessageEntry: action.content
       };
 
+    case GET_CHANNELS:
+      return {
+        ...state,
+        channels: action.channels
+      };
+
     default:
       return state;
   }
-
 }
 
 const store = createStore(
   reducer,
-  composeWithDevTools(applyMiddleware(
-    thunkMiddleware,
-    loggingMiddleware
-  ))
+  composeWithDevTools(applyMiddleware(thunkMiddleware, loggingMiddleware))
 );
 
 export default store;
